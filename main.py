@@ -23,7 +23,14 @@ def add_item():
         print(f"Added {quantity}x {asin} to {location}")
 
 def find_item():
-    print("Find item feature coming soon...")
+    asin = input("Enter ASIN: ")
+
+    if asin in inventory:
+        location = inventory[asin]["location"] # check before access, only runs if ASIN exists
+        quantity = inventory[asin]["quantity"]
+        print(f"Found {quantity}x {asin} at {location}")
+    else: 
+        print(f"{asin} was not found")
 
 running = True
 
