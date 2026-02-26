@@ -1,6 +1,22 @@
 import json
+import csv
 
 inventory = {}
+
+def save_inventory():
+    # Open inventory.csv for writing (auto-closes when done)
+    with open("inventory.csv", "w", newline = "") as f:
+        # Create writer to handle CSV formatting
+        writer = csv.writer(f)
+
+        # Write header
+        writer.writerow(["ASIN", "Location", "Quantity"])
+
+        # Write each item
+        for asin in inventory:
+            location = inventory[asin]["location"]
+            quantity = inventory[asin]["quantity"]
+            writer.writerow([asin, location, quantity]) # Writes each item as a row
 
 def add_item():
     # Get ASIN from user
@@ -13,20 +29,22 @@ def add_item():
     quantity = int(input("Enter quantity: "))
 
     if asin in inventory:
-        # add to quantity if ASIN exists
+        # Add to quantity if ASIN exists
         inventory[asin]["quantity"] += quantity
         inventory[asin]["location"] = location # Update location in case it moved 
         print(f"Added {quantity} more with ASIN: {asin}. Total now: {inventory[asin]['quantity']}x {asin} at {location}")
     else:
-        # initialize entry for new ASIN
+        # Initialize entry for new ASIN
         inventory[asin] = {"location": location, "quantity": quantity}
         print(f"Added {quantity}x {asin} to {location}")
+
+    save_inventory()
 
 def find_item():
     asin = input("Enter ASIN: ")
 
     if asin in inventory:
-        location = inventory[asin]["location"] # check before access, only runs if ASIN exists
+        location = inventory[asin]["location"] # Check before access, only runs if ASIN exists
         quantity = inventory[asin]["quantity"]
         print(f"Found {quantity}x {asin} at {location}")
     else: 
