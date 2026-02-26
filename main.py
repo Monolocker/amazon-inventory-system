@@ -41,13 +41,24 @@ def save_inventory():
 
 def add_item():
     # Get ASIN from user
-    asin = input("Enter ASIN: ")
+    asin = input("Enter ASIN (or 'exit' to exit): ")
+    if asin.lower() == "exit":
+        print("Cancelled. Returning to menu.")
+        return # Exit funciton, goes back to menu
 
     # Get the location from user
-    location = input("Enter location: ")
+    location = input("Enter location (or 'exit' to exit): ")
+    if location.lower() == "exit":
+        print("Cancelled. Returning to menu.")
+        return
 
-    # Get quantity from user 
-    quantity = int(input("Enter quantity: "))
+    # Get input as string in case of potential exit before converting to int 
+    quantity_input = input("Enter quantity (or 'exit' to exit) ")
+    if quantity_input.lower() == "exit":
+        print("Cancelled. Returning to menu.")
+        return
+    
+    quantity = int(quantity_input) # Conversion after validation (no "exit")
 
     if asin in inventory:
         # Add to quantity if ASIN exists
@@ -62,7 +73,11 @@ def add_item():
     save_inventory()
 
 def find_item():
-    asin = input("Enter ASIN: ")
+    # Get ASIN with exit option
+    asin = input("Enter ASIN (or 'exit' to exit): ")
+    if asin.lower() == "exit":
+        print("Cancelled. Returning to menu.")
+        return
 
     if asin in inventory:
         location = inventory[asin]["location"] # Check before access, only runs if ASIN exists
