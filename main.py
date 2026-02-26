@@ -1,7 +1,28 @@
 import json
 import csv
+import os
 
 inventory = {}
+
+def load_inventory():
+    # Guard clause: Check if file exists 
+    if not os.path.exists("inventory.csv"):
+        return 
+    
+    # Open CSV for reading 
+    with open("inventory.csv", "r") as f:
+        reader = csv.reader(f)
+
+        # Skip header row
+        next(reader)
+
+        # Load each row into inventory
+        for row in reader: 
+            asin = row[0]
+            location = row[1]
+            quantity = int(row[2]) # Convert string to int
+
+            inventory[asin] = {"location": location, "quantity": quantity} 
 
 def save_inventory():
     # Open inventory.csv for writing (auto-closes when done)
@@ -49,6 +70,9 @@ def find_item():
         print(f"Found {quantity}x {asin} at {location}")
     else: 
         print(f"{asin} was not found")
+
+# Load existing inventory from CSV 
+load_inventory()
 
 running = True
 
