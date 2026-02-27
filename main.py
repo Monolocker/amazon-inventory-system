@@ -72,6 +72,7 @@ def add_item():
 
     save_inventory()
 
+
 def find_item():
     # Get ASIN with exit option
     asin = input("Enter ASIN (or 'exit' to exit): ")
@@ -86,8 +87,66 @@ def find_item():
     else: 
         print(f"{asin} was not found")
 
+def remove_item():
+    asin = input("Enter ASIN (or 'exit' to exit): ")
+    if asin.lower() == "exit":
+        print("Cancelled. Returning to menu.")
+        return
+    
+    # Check if ASIN exists
+    if asin not in inventory:
+        print(f"{asin} not found in inventory.")
+        return 
+    
+    # Show current quantity for context
+    current_qty = inventory[asin]["quantity"]
+    location = inventory[asin]["location"]
+    print(f"Currently have {current_qty}x {asin} at {location}")
+
+    while True:
+        qty_input = input("How many to remove (or 'exit' to exit): ")
+
+        if qty_input.lower() == "exit":
+            print("Cancelled. Returning to menu.")
+            return
+        
+        if qty_input.isdigit():
+            quantity = int(qty_input)
+            if quantity > 0:
+                break
+            else: 
+                print("Error: Enter a positive non-zero number")
+        else: 
+            print("Error. Invalid quantity. Please enter a number")
+    
+    new_qty = current_qty - quantity # what is in inventory - what is being removed
+
+    if quantity == current_qty: 
+        # Exact match: remove all without warning
+        del inventory[asin]
+        print(f"Removed {current_qty}x {asin}. ASIN deleted from inventory.")
+    elif quantity > current_qty:
+        # Trying to remove more than available, ask confirmation
+        confirm = input(f"Only {current_qty} available. Remove all? (yes/no): ")
+        if confirm.lower() == "yes":
+            # Confirmed. Remove all
+            del inventory[asin]
+            print(f"Removed all {current_qty}x {asin}. ASIN deleted from inventory.")
+        else: 
+            # confirm == no
+            print("Cancelled. Returning to menu.")
+            return 
+    else: 
+        # Normal reduction quantity < current_qty
+        inventory[asin]["quantity"] = new_qty
+        print(f"Removed {quantity}x {asin}. {new_qty}x {asin} remaining at {location}")
+
+    # Save changes to CSV
+    save_inventory()
+
 # Load existing inventory from CSV 
 load_inventory()
+
 
 running = True
 
@@ -95,8 +154,9 @@ while running:
     print("=== Amazon Inventory System ===")
     print("1. Add Item")
     print("2. Find Item")
-    print("3. Exit")
-    print("4. [DEBUG] Show all inventory")
+    print("3. Remove Item")
+    print("4. Exit")
+    print("5. [DEBUG] Show all inventory")
 
     choice = input("Choose an option: ")
 
@@ -105,9 +165,11 @@ while running:
     elif choice == "2":
         find_item()
     elif choice == "3":
+        remove_item()
+    elif choice == "4":
         running = False  # This exits the loop
         print("Exiting... Goodbye!")
-    elif choice == "4":
+    elif choice == "5":
         print(json.dumps(inventory, indent=2))
     else:
         print("Invalid option. Please try again.")
