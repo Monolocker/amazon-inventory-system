@@ -41,7 +41,7 @@ def save_inventory():
 
 def add_item():
     # Get ASIN from user
-    asin = input("Enter ASIN (or 'exit' to exit): ")
+    asin = input("Enter or scan ASIN (or 'exit' to exit): ")
     if asin.lower() == "exit":
         print("Cancelled. Returning to menu.")
         return # Exit funciton, goes back to menu
@@ -144,6 +144,25 @@ def remove_item():
     # Save changes to CSV
     save_inventory()
 
+def view_all_items():
+    # Check if empty
+    if len(inventory) == 0:
+        print("Inventory is empty.")
+        return
+    
+    # Print header 
+    print("\n=== Current Inventory ===")
+    print(f"\n{'ASIN':<12} | {'Location':<10} | {'Quantity':<8}")
+    print("-" * 40)
+
+    # Print each item (similar to save_inventory)
+    for asin in inventory:
+        location = inventory[asin]["location"]
+        quantity = inventory[asin]["quantity"]
+        print(f"{asin:<12} | {location:<10} | {quantity:<8}")
+
+    print() # Blank line at end
+
 # Load existing inventory from CSV 
 load_inventory()
 
@@ -155,8 +174,8 @@ while running:
     print("1. Add Item")
     print("2. Find Item")
     print("3. Remove Item")
-    print("4. Exit")
-    print("5. [DEBUG] Show all inventory")
+    print("4. View All Items")
+    print("5. Exit")
 
     choice = input("Choose an option: ")
 
@@ -167,9 +186,9 @@ while running:
     elif choice == "3":
         remove_item()
     elif choice == "4":
-        running = False  # This exits the loop
-        print("Exiting... Goodbye!")
+        view_all_items()
     elif choice == "5":
-        print(json.dumps(inventory, indent=2))
+        running = False
+        print("Exiting... Goodbye!")
     else:
         print("Invalid option. Please try again.")
