@@ -1,194 +1,149 @@
-import json
-import csv
-import os
+"""
+CLI interface for Amazon Inventory System.
 
-inventory = {}
+- Uses SQLite via db.py (replaces old CSV approach).
+- LOCAL-ONLY: this CLI will be replaced by Flask routes in Milestone 2.
+- Run: python main.py
+"""
+from db import init_db, add_item, find_item, remove_item, view_all, get_total_quantity
 
-def load_inventory():
-    # Guard clause: Check if file exists 
-    if not os.path.exists("inventory.csv"):
-        return 
-    
-    # Open CSV for reading 
-    with open("inventory.csv", "r") as f:
-        reader = csv.reader(f)
 
-        # Skip header row
-        next(reader)
-
-        # Load each row into inventory
-        for row in reader: 
-            asin = row[0]
-            location = row[1]
-            quantity = int(row[2]) # Convert string to int
-
-            inventory[asin] = {"location": location, "quantity": quantity} 
-
-def save_inventory():
-    # Open inventory.csv for writing (auto-closes when done)
-    with open("inventory.csv", "w", newline = "") as f:
-        # Create writer to handle CSV formatting
-        writer = csv.writer(f)
-
-        # Write header
-        writer.writerow(["ASIN", "Location", "Quantity"])
-
-        # Write each item
-        for asin in inventory:
-            location = inventory[asin]["location"]
-            quantity = inventory[asin]["quantity"]
-            writer.writerow([asin, location, quantity]) # Writes each item as a row
-
-def add_item():
-    # Get ASIN from user
-    asin = input("Enter or scan ASIN (or 'exit' to exit): ")
+def cli_add():
+    asin = input("Enter or scan ASIN (or 'exit'): ").strip()
     if asin.lower() == "exit":
-        print("Cancelled. Returning to menu.")
-        return # Exit funciton, goes back to menu
-
-    # Get the location from user
-    location = input("Enter location (or 'exit' to exit): ")
-    if location.lower() == "exit":
-        print("Cancelled. Returning to menu.")
         return
 
-    # Get input as string in case of potential exit before converting to int 
-    quantity_input = input("Enter quantity (or 'exit' to exit) ")
-    if quantity_input.lower() == "exit":
-        print("Cancelled. Returning to menu.")
-        return
-    
-    quantity = int(quantity_input) # Conversion after validation (no "exit")
-
-    if asin in inventory:
-        # Add to quantity if ASIN exists
-        inventory[asin]["quantity"] += quantity
-        inventory[asin]["location"] = location # Update location in case it moved 
-        print(f"Added {quantity} more with ASIN: {asin}. Total now: {inventory[asin]['quantity']}x {asin} at {location}")
-    else:
-        # Initialize entry for new ASIN
-        inventory[asin] = {"location": location, "quantity": quantity}
-        print(f"Added {quantity}x {asin} to {location}")
-
-    save_inventory()
-
-
-def find_item():
-    # Get ASIN with exit option
-    asin = input("Enter ASIN (or 'exit' to exit): ")
-    if asin.lower() == "exit":
-        print("Cancelled. Returning to menu.")
+    location = input("Enter location (or 'exit'): ").strip().upper()
+    if location.upper() == "EXIT":
         return
 
-    if asin in inventory:
-        location = inventory[asin]["location"] # Check before access, only runs if ASIN exists
-        quantity = inventory[asin]["quantity"]
-        print(f"Found {quantity}x {asin} at {location}")
-    else: 
-        print(f"{asin} was not found")
-
-def remove_item():
-    asin = input("Enter ASIN (or 'exit' to exit): ")
-    if asin.lower() == "exit":
-        print("Cancelled. Returning to menu.")
+    qty_input = input("Enter quantity (or 'exit'): ").strip()
+    if qty_input.lower() == "exit":
         return
-    
-    # Check if ASIN exists
-    if asin not in inventory:
-        print(f"{asin} not found in inventory.")
-        return 
-    
-    # Show current quantity for context
-    current_qty = inventory[asin]["quantity"]
-    location = inventory[asin]["location"]
-    print(f"Currently have {current_qty}x {asin} at {location}")
 
-    while True:
-        qty_input = input("How many to remove (or 'exit' to exit): ")
-
-        if qty_input.lower() == "exit":
-            print("Cancelled. Returning to menu.")
+    try:
+        quantity = int(qty_input)
+        if quantity <= 0:
+            print("Error: quantity must be a positive number.")
             return
-        
-        if qty_input.isdigit():
-            quantity = int(qty_input)
-            if quantity > 0:
-                break
-            else: 
-                print("Error: Enter a positive non-zero number")
-        else: 
-            print("Error. Invalid quantity. Please enter a number")
-    
-    new_qty = current_qty - quantity # what is in inventory - what is being removed
+    except ValueError:
+        print("Error: invalid number.")
+        return
 
-    if quantity == current_qty: 
-        # Exact match: remove all without warning
-        del inventory[asin]
-        print(f"Removed {current_qty}x {asin}. ASIN deleted from inventory.")
-    elif quantity > current_qty:
-        # Trying to remove more than available, ask confirmation
-        confirm = input(f"Only {current_qty} available. Remove all? (yes/no): ")
-        if confirm.lower() == "yes":
-            # Confirmed. Remove all
-            del inventory[asin]
-            print(f"Removed all {current_qty}x {asin}. ASIN deleted from inventory.")
-        else: 
-            # confirm == no
-            print("Cancelled. Returning to menu.")
-            return 
-    else: 
-        # Normal reduction quantity < current_qty
-        inventory[asin]["quantity"] = new_qty
-        print(f"Removed {quantity}x {asin}. {new_qty}x {asin} remaining at {location}")
+    add_item(asin, location, quantity)
+    total = get_total_quantity(asin)
+    print(f"✓ Added {quantity}x {asin} at {location}. Total across all locations: {total}")
 
-    # Save changes to CSV
-    save_inventory()
 
-def view_all_items():
-    # Check if empty
-    if len(inventory) == 0:
+def cli_find():
+    asin = input("Enter ASIN (or 'exit'): ").strip()
+    if asin.lower() == "exit":
+        return
+
+    locations = find_item(asin)
+    if not locations:
+        print(f"{asin} not found.")
+        return
+
+    total = sum(loc["quantity"] for loc in locations)
+    print(f"\n{asin} — Total: {total}")
+    for loc in locations:
+        print(f"  {loc['location']}: {loc['quantity']}")
+
+
+def cli_remove():
+    asin = input("Enter ASIN (or 'exit'): ").strip()
+    if asin.lower() == "exit":
+        return
+
+    locations = find_item(asin)
+    if not locations:
+        print(f"{asin} not found.")
+        return
+
+    # Show current state
+    total = sum(loc["quantity"] for loc in locations)
+    print(f"\n{asin} — Total: {total}")
+    for loc in locations:
+        print(f"  {loc['location']}: {loc['quantity']}")
+
+    location = input("Remove from which location? (or 'exit'): ").strip().upper()
+    if location.upper() == "EXIT":
+        return
+
+    qty_input = input("Quantity to remove (or 'exit'): ").strip()
+    if qty_input.lower() == "exit":
+        return
+
+    try:
+        quantity = int(qty_input)
+        if quantity <= 0:
+            print("Error: quantity must be a positive number.")
+            return
+    except ValueError:
+        print("Error: invalid number.")
+        return
+
+    result = remove_item(asin, location, quantity)
+
+    if not result["success"]:
+        if result["error"] == "not_found":
+            print(f"{asin} not found at {location}.")
+        elif result["error"] == "exceeds":
+            print(f"Only {result['available']} available at {location}.")
+        return
+
+    if result["asin_deleted"]:
+        print(f"✓ Removed {result['removed']}x {asin} from {location}. ASIN fully deleted.")
+    elif result["remaining_at_location"] == 0:
+        print(f"✓ Removed {result['removed']}x {asin} from {location}. Location removed.")
+    else:
+        print(
+            f"✓ Removed {result['removed']}x {asin} from {location}. "
+            f"{result['remaining_at_location']} remaining at {location}."
+        )
+
+
+def cli_view_all():
+    items = view_all()
+    if not items:
         print("Inventory is empty.")
         return
-    
-    # Print header 
-    print("\n=== Current Inventory ===")
-    print(f"\n{'ASIN':<12} | {'Location':<10} | {'Quantity':<8}")
-    print("-" * 40)
 
-    # Print each item (similar to save_inventory)
-    for asin in inventory:
-        location = inventory[asin]["location"]
-        quantity = inventory[asin]["quantity"]
-        print(f"{asin:<12} | {location:<10} | {quantity:<8}")
-
-    print() # Blank line at end
-
-# Load existing inventory from CSV 
-load_inventory()
+    print(f"\n{'ASIN':<15} | {'Location':<10} | {'Qty':<6}")
+    print("-" * 36)
+    for item in items:
+        print(f"{item['asin']:<15} | {item['location']:<10} | {item['quantity']:<6}")
+    print()
 
 
-running = True
+def main():
+    init_db()
 
-while running:
-    print("=== Amazon Inventory System ===")
-    print("1. Add Item")
-    print("2. Find Item")
-    print("3. Remove Item")
-    print("4. View All Items")
-    print("5. Exit")
+    while True:
+        print("\n=== Amazon Inventory System ===")
+        print("1. Add Item")
+        print("2. Find Item")
+        print("3. Remove Item")
+        print("4. View All")
+        print("5. Exit")
 
-    choice = input("Choose an option: ")
+        choice = input("Choose: ").strip()
 
-    if choice == "1":
-        add_item()
-    elif choice == "2":
-        find_item()
-    elif choice == "3":
-        remove_item()
-    elif choice == "4":
-        view_all_items()
-    elif choice == "5":
-        running = False
-        print("Exiting... Goodbye!")
-    else:
-        print("Invalid option. Please try again.")
+        if choice == "1":
+            cli_add()
+        elif choice == "2":
+            cli_find()
+        elif choice == "3":
+            cli_remove()
+        elif choice == "4":
+            cli_view_all()
+        elif choice == "5":
+            print("Goodbye!")
+            break
+        else:
+            print("Invalid option.")
+
+
+if __name__ == "__main__":
+    main()
